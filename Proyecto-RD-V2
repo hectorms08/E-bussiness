@@ -1,0 +1,35 @@
+from bs4 import BeautifulSoup as bs
+import requests as rq
+
+def obtener_texto_limpio(url):
+    html = rq.get(url).content.decode('utf-8')
+    soup = bs(html, 'html.parser')
+
+    # Obtener el texto ordenado excluyendo las etiquetas con atributo 'type' igual a 'button'
+    texto_ordenado = ' '.join(soup.stripped_strings)
+
+    # Filtrar las etiquetas con atributo 'type' igual a 'button' y eliminarlas del árbol
+    for elem in soup.find_all(['button', 'input'], {'type': 'button'}):
+        elem.decompose()
+
+    return texto_ordenado
+
+def buscar_en_paginas(url_base, max_paginas):
+    for pagina in range(1, max_paginas + 1):
+        # Construir la URL de la página actual
+        url_actual = f'{url_base}&page={pagina}'  # Ajusta según la estructura real de la URL
+        
+        # Obtener el texto limpio de la página actual
+        texto_limpio = obtener_texto_limpio(url_actual)
+        
+        # Imprimir o hacer lo que desees con el texto limpio de la página actual
+        print(f"=== Página {pagina} ===")
+        print(texto_limpio)
+
+# URL base del buscador
+url_base = 'https://tienda.falabella.com.pe/falabella-pe/collection/adornosarbol?subdomain=tienda'
+# Número máximo de páginas a recorrer (ajusta según sea necesario)
+max_paginas = 5
+
+# Llamar a la función para buscar en varias páginas
+buscar_en_paginas(url_base, max_paginas)
