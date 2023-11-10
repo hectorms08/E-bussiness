@@ -1,0 +1,24 @@
+import requests
+from bs4 import BeautifulSoup
+
+# URL de la página web que quieres analizar
+url = 'https://www.falabella.com.pe/falabella-pe/category/cat760702/Telefonia'
+
+# Realizar la solicitud HTTP para obtener el contenido de la página
+response = requests.get(url)
+
+# Comprobar que la solicitud fue exitosa
+if response.status_code == 200:
+    # Usar BeautifulSoup para analizar el contenido
+    new_soup = BeautifulSoup(response.content, 'html.parser')
+
+# Extract product details: name, price, brand from the new file
+new_products = []
+for product in new_soup.find_all('div', class_='grid-pod'):
+    name = product.find('b', class_='pod-subTitle').get_text(strip=True) if product.find('b', class_='pod-subTitle') else 'No Name'
+    price = product.find('ol', class_='pod-prices').get_text(strip=True) if product.find('ol', class_='pod-prices') else 'No Price'
+    brand = product.find('b', class_='title-rebrand').get_text(strip=True) if product.find('b', class_='title-rebrand') else 'No Brand'
+    
+    new_products.append({'name': name, 'price': price, 'brand': brand})
+
+print(new_products)  # Display the first 5 products for a preview
