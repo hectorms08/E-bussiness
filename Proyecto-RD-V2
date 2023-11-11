@@ -1,35 +1,58 @@
-from bs4 import BeautifulSoup as bs
-import requests as rq
+import requests
+from bs4 import BeautifulSoup
 
-def obtener_texto_limpio(url):
-    html = rq.get(url).content.decode('utf-8')
-    soup = bs(html, 'html.parser')
+def buscar_producto_en_pagina(soup, nombre_producto):
+    productos_encontrados = []
 
-    # Obtener el texto ordenado excluyendo las etiquetas con atributo 'type' igual a 'button'
-    texto_ordenado = ' '.join(soup.stripped_strings)
+    for product in soup.find_all('div', class_='grid-pod'):
+        name = product.find('b', class_='pod-subTitle').get_text(strip=True) if product.find('b', class_='pod-subTitle') else 'No Name'
+        price = product.find('ol', class_='pod-prices').get_text(strip=True) if product.find('ol', class_='pod-prices') else 'No Price'
+        brand = product.find('b', class_='title-rebrand').get_text(strip=True) if product.find('b', class_='title-rebrand') else 'No Brand'
 
-    # Filtrar las etiquetas con atributo 'type' igual a 'button' y eliminarlas del árbol
-    for elem in soup.find_all(['button', 'input'], {'type': 'button'}):
-        elem.decompose()
+        if nombre_producto.lower() in name.lower():
+            productos_encontrados.append({'name': name, 'price': price, 'brand': brand})
 
-    return texto_ordenado
+    return productos_encontrados
 
-def buscar_en_paginas(url_base, max_paginas):
-    for pagina in range(1, max_paginas + 1):
-        # Construir la URL de la página actual
-        url_actual = f'{url_base}&page={pagina}'  # Ajusta según la estructura real de la URL
-        
-        # Obtener el texto limpio de la página actual
-        texto_limpio = obtener_texto_limpio(url_actual)
-        
-        # Imprimir o hacer lo que desees con el texto limpio de la página actual
-        print(f"=== Página {pagina} ===")
-        print(texto_limpio)
+def buscar_producto_en_todas_las_paginas(url, nombre_producto):
+    pagina = 1
+    productos_en_todas_las_paginas = []
 
-# URL base del buscador
-url_base = 'https://tienda.falabella.com.pe/falabella-pe/collection/adornosarbol?subdomain=tienda'
-# Número máximo de páginas a recorrer (ajusta según sea necesario)
-max_paginas = 5
+    while True:
+        current_url = f'{url}?page={pagina}'
+        response = requests.get(current_url)
 
-# Llamar a la función para buscar en varias páginas
-buscar_en_paginas(url_base, max_paginas)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            productos_en_pagina = buscar_producto_en_pagina(soup, nombre_producto)
+
+            if productos_en_pagina:
+                productos_en_todas_las_paginas.extend(productos_en_pagina)
+
+            # Verificar si hay más páginas
+            next_button = soup.find('li', class_='pag-next')
+            if not next_button:
+                break  # No hay más páginas
+
+            pagina += 1
+        else:
+            print(f'Error al obtener la página {pagina}. Código de estado: {response.status_code}')
+            break
+
+    return productos_en_todas_las_paginas
+
+# Solicitar al usuario ingresar el modelo del producto
+modelo_producto = input('Ingrese el modelo del producto que desea buscar: ')
+
+# URL de la página web que quieres analizar
+url = 'https://www.falabella.com.pe/falabella-pe/category/cat760702/Telefonia'
+
+# Buscar el producto en todas las páginas y mostrar el resultado
+resultados = buscar_producto_en_todas_las_paginas(url, modelo_producto)
+
+if resultados:
+    print(f'Se encontraron los siguientes productos:')
+    for producto in resultados:
+        print(producto)
+else:
+    print(f'No se encontró el producto con el modelo "{modelo_producto}" en ninguna página.')
